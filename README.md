@@ -172,13 +172,10 @@ Após iniciar a aplicação, acesse:
 - **Cache otimizado** para performance
 
 ```bash
-curl -X POST "http://localhost:8000/v1/search" \
+curl -X POST "http://localhost:8000/v1/responses" \
+     -H "Authorization: Basic $(echo -n 'usuario:senha' | base64)" \
      -H "Content-Type: application/json" \
-     -d '{
-       "query": "Quais são os direitos trabalhistas em caso de demissão?",
-       "limit": 5,
-       "rerank": true
-     }'
+     -d '{"input": [{"role": "user", "content": [{"type": "text", "text": "Quais são os direitos do trabalhador em caso de acidente de trabalho?"}]}]}'
 ```
 
 #### Intent Router (V2)
@@ -200,12 +197,13 @@ curl -X POST "http://localhost:8000/v1/search" \
 - **Visualização de relacionamentos**
 
 ```bash
-curl -X POST "http://localhost:8000/grafo/crawl" \
+curl -X GET "http://localhost:8000/grafo/" \
+     -H "Authorization: Basic $(echo -n 'usuario:senha' | base64)" \
      -H "Content-Type: application/json" \
      -d '{
-       "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm",
-       "depth": 3,
-       "max_pages": 50
+       "urls": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm",
+       "profundidade": 2,
+       "top_n": 20
      }'
 ```
 
@@ -225,23 +223,21 @@ curl -X POST "http://localhost:8000/grafo/crawl" \
 
 | Versão | Endpoint | Método | Descrição | Autenticação |
 |--------|----------|--------|-----------|--------------|
-| V1 | `/v1/search` | POST | Busca com reranking | ✅ |
-| V1 | `/v1/responses` | POST | Respostas streaming | ✅ |
-| V2 | `/v2/intent` | POST | Roteamento de intenções | ❌ |
-| V2 | `/v2/responses` | POST | Respostas streaming | ✅ |
-| V3 | `/v3/search` | POST | Busca genérica | ❌ |
-| V3 | `/v3/responses` | POST | Respostas streaming | ✅ |
-| Grafo | `/grafo/crawl` | POST | Navegação de grafos | ❌ |
+| V1 | `/v1/responses` | POST | Busca com reranking e streaming | ✅ |
+| V2 | `/v2/responses` | POST | Busca híbrida com queries expandidas | ✅ |
+| V3 | `/v3/responses` | POST | Busca genérica simples | ✅ |
+| Grafo | `/grafo/` | GET | Navegação de grafos com PageRank | ❌ |
+| Root | `/` | GET | Health check e informações da API | ❌ |
 
 ### 🔐 Autenticação
 
 A API utiliza autenticação HTTP Basic para endpoints sensíveis:
 
 ```bash
-curl -X POST "http://localhost:8000/v1/search" \
+curl -X POST "http://localhost:8000/v1/responses" \
      -H "Authorization: Basic $(echo -n 'usuario:senha' | base64)" \
      -H "Content-Type: application/json" \
-     -d '{"query": "teste"}'
+     -d '{"input": [{"role": "user", "content": [{"type": "text", "text": "teste"}]}]}'
 ```
 
 ## 🧪 Exemplos de Uso
@@ -250,25 +246,40 @@ curl -X POST "http://localhost:8000/v1/search" \
 
 ```python
 import requests
+import base64
 
 # Busca sobre direitos trabalhistas
-response = requests.post("http://localhost:8000/v1/search", json={
-    "query": "Quais são os direitos do trabalhador em caso de acidente de trabalho?",
-    "limit": 3,
-    "rerank": True
-})
+response = requests.post("http://localhost:8000/v1/responses", 
+    headers={
+        "Authorization": "Basic " + base64.b64encode(b"admin:senha").decode(),
+        "Content-Type": "application/json"
+    },
+    json={
+        "input": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Quais são os direitos do trabalhador em caso de acidente de trabalho?"
+                    }
+                ]
+            }
+        ]
+    }
+)
 
-print(response.json())
+print(response.text)  # Resposta em formato SSE
 ```
 
 ### Análise de Relacionamentos Legais
 
 ```python
 # Análise de grafo de uma lei específica
-response = requests.post("http://localhost:8000/grafo/crawl", json={
-    "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm",
-    "depth": 2,
-    "max_pages": 20
+response = requests.get("http://localhost:8000/grafo/", params={
+    "urls": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm",
+    "profundidade": 2,
+    "top_n": 20
 })
 
 print(response.json())

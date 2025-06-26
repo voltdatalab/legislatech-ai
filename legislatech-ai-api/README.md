@@ -244,66 +244,131 @@ curl http://localhost:8000/health
 ### V1 - Rerank Search
 | Endpoint | Método | Descrição | Autenticação |
 |----------|--------|-----------|--------------|
-| `/v1/search` | POST | Busca com reranking | ✅ |
-| `/v1/responses` | POST | Respostas streaming | ✅ |
+| `/v1/responses` | POST | Busca com reranking e streaming | ✅ |
 
 **Exemplo de busca:**
 ```bash
-curl -X POST "http://localhost:8000/v1/search" \
+curl -X POST "http://localhost:8000/v1/responses" \
      -H "Authorization: Basic $(echo -n 'admin:senha' | base64)" \
      -H "Content-Type: application/json" \
      -d '{
-       "query": "Quais são os direitos trabalhistas em caso de demissão?",
-       "limit": 5,
-       "rerank": true,
-       "filters": {
-         "tipo": "lei",
-         "ano": "2023"
-       }
+       "input": [
+         {
+           "role": "user",
+           "content": [
+             {
+               "type": "text",
+               "text": "Quais são os direitos trabalhistas em caso de demissão?"
+             }
+           ]
+         }
+       ]
      }'
 ```
 
-### V2 - Intent Router
+### V2 - Intent Router (Busca Híbrida)
 | Endpoint | Método | Descrição | Autenticação |
 |----------|--------|-----------|--------------|
-| `/v2/intent` | POST | Roteamento de intenções | ❌ |
-| `/v2/responses` | POST | Respostas streaming | ✅ |
+| `/v2/responses` | POST | Busca híbrida com queries expandidas | ✅ |
 
 **Exemplo de roteamento:**
 ```bash
-curl -X POST "http://localhost:8000/v2/intent" \
+curl -X POST "http://localhost:8000/v2/responses" \
+     -H "Authorization: Basic $(echo -n 'admin:senha' | base64)" \
      -H "Content-Type: application/json" \
      -d '{
-       "query": "Preciso saber sobre férias trabalhistas",
-       "context": "advogado trabalhista"
+       "input": [
+         {
+           "role": "user",
+           "content": [
+             {
+               "type": "text",
+               "text": "Preciso saber sobre férias trabalhistas"
+             }
+           ]
+         }
+       ]
      }'
 ```
 
 ### V3 - Generic Search
 | Endpoint | Método | Descrição | Autenticação |
 |----------|--------|-----------|--------------|
-| `/v3/search` | POST | Busca genérica | ❌ |
-| `/v3/responses` | POST | Respostas streaming | ✅ |
+| `/v3/responses` | POST | Busca genérica simples | ✅ |
+
+**Exemplo de busca genérica:**
+```bash
+curl -X POST "http://localhost:8000/v3/responses" \
+     -H "Authorization: Basic $(echo -n 'admin:senha' | base64)" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "input": [
+         {
+           "role": "user",
+           "content": [
+             {
+               "type": "text",
+               "text": "Explique o Código de Defesa do Consumidor"
+             }
+           ]
+         }
+       ]
+     }'
+```
 
 ### Grafo Crawler
 | Endpoint | Método | Descrição | Autenticação |
 |----------|--------|-----------|--------------|
-| `/grafo/crawl` | POST | Navegação de grafos | ❌ |
+| `/grafo/` | GET | Navegação de grafos com PageRank | ❌ |
 
 **Exemplo de crawling:**
 ```bash
-curl -X POST "http://localhost:8000/grafo/crawl" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "url": "https://www.planalto.gov.br/ccivil_03/leis/l8078.htm",
-       "depth": 3,
-       "max_pages": 50,
-       "filters": {
-         "tipo": ["lei", "decreto"],
-         "ano_min": 2020
-       }
-     }'
+curl -X GET "http://localhost:8000/grafo/?urls=https://www.planalto.gov.br/ccivil_03/leis/l8078.htm&profundidade=2&top_n=20"
 ```
+
+### Root
+| Endpoint | Método | Descrição | Autenticação |
+|----------|--------|-----------|--------------|
+| `/` | GET | Health check e informações da API | ❌ |
+
+**Exemplo:**
+```bash
+curl http://localhost:8000/
+```
+
+### 🔐 Autenticação
+
+A API utiliza autenticação HTTP Basic para endpoints sensíveis:
+
+```bash
+curl -X POST "http://localhost:8000/v1/responses" \
+     -H "Authorization: Basic $(echo -n 'usuario:senha' | base64)" \
+     -H "Content-Type: application/json" \
+     -d '{"input": [{"role": "user", "content": [{"type": "text", "text": "teste"}]}]}'
+```
+
+### 📊 Formato de Resposta
+
+Todos os endpoints de resposta (`/responses`) retornam dados em formato Server-Sent Events (SSE):
+
+```json
+{
+  "type": "response.output_text.delta",
+  "item_id": "msg_abc123",
+  "output_index": 1,
+  "content_index": 0,
+  "delta": "Texto da resposta..."
+}
+```
+
+### 🔄 Streaming
+
+Os endpoints `/responses` utilizam streaming para respostas em tempo real:
+
+- **Eventos de início**: `response.created`
+- **Eventos de conteúdo**: `response.output_text.delta`
+- **Eventos de anotações**: `response.output_text.annotation.added`
+- **Eventos de fim**: `response.output_text.done`
 
 ## 🧪 Testando a API
 
@@ -333,26 +398,34 @@ curl http://localhost:8000/health
 #### 2. Teste de Autenticação
 ```bash
 # Sem autenticação (deve falhar)
-curl -X POST "http://localhost:8000/v1/search" \
+curl -X POST "http://localhost:8000/v1/responses" \
      -H "Content-Type: application/json" \
-     -d '{"query": "teste"}'
+     -d '{"input": [{"role": "user", "content": [{"type": "text", "text": "teste"}]}]}'
 
 # Com autenticação (deve funcionar)
-curl -X POST "http://localhost:8000/v1/search" \
+curl -X POST "http://localhost:8000/v1/responses" \
      -H "Authorization: Basic $(echo -n 'admin:senha' | base64)" \
      -H "Content-Type: application/json" \
-     -d '{"query": "teste"}'
+     -d '{"input": [{"role": "user", "content": [{"type": "text", "text": "teste"}]}]}'
 ```
 
 #### 3. Teste de Busca RAG
 ```bash
-curl -X POST "http://localhost:8000/v1/search" \
+curl -X POST "http://localhost:8000/v1/responses" \
      -H "Authorization: Basic $(echo -n 'admin:senha' | base64)" \
      -H "Content-Type: application/json" \
      -d '{
-       "query": "Qual é a legislação sobre proteção de dados?",
-       "limit": 3,
-       "rerank": true
+       "input": [
+         {
+           "role": "user",
+           "content": [
+             {
+               "type": "text",
+               "text": "Qual é a legislação sobre proteção de dados?"
+             }
+           ]
+         }
+       ]
      }'
 ```
 
