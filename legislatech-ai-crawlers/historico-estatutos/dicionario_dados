@@ -1,0 +1,21 @@
+num_lei: Numero da lei
+data_lei: Data que a lei foi publicada
+data_dou: Data que a lei foi publicada no DOU
+bleached_nome: Nome da lei(completo) mas limpo de caracteres especiais
+non_bleached_nome: Nome da lei(completo) sem alterações
+
+ementa: Ementa da lei limpo de sujeiras(contém alguns caracteres especiais)
+
+link: Link para o texto completo da lei
+
+ano: Ano da lei
+
+lei_text: Texto completo da lei bleached e parsed(limpo de caracteres especiais sujos e retirado possíveis caracteres inúteis)
+non_parsed_lei_text: Texto completo da lei sem alterações
+lei_text_striked: Texto completo da lei que tiveram os tracinhos(provavelmente trechos da lei que foram alterados) bleached e parsed(limpo de caracteres especiais sujos e retirado possíveis caracteres inúteis)
+non_parsed_lei_text_striked: Texto completo da lei que tiveram os tracinhos(provavelmente trechos da lei que foram alterados) sem alterações
+full_lei_text: Texto completo da lei da maneira que está no site bleached e parsed
+non_parsed_full_lei_text: Texto completo da lei da maneira que está no site sem alterações
+
+main_sancionador: Presidente, deputado ou senador que sancionou a lei
+other_sancionadores: Deputados, senadores ou derivados que estavam diretamente envolvidos no sancionamento da lei
